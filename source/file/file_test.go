@@ -30,7 +30,7 @@ func TestConfig(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	conf.Load(file.NewSource(file.WithPath(path)))
+	_ = conf.Load(file.NewSource(file.WithPath(path)))
 	// simulate multiple close
 	go conf.Close()
 	go conf.Close()

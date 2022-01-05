@@ -1,23 +1,26 @@
 package env
 
 import (
-	"os"
-	"strconv"
-	"strings"
-	"time"
-
+	"encoding/json"
 	"github.com/imdario/mergo"
 	"github.com/skynet2/go-config/source"
+	"os"
+	"strings"
+	"time"
 )
 
+type strippedPrefixKey struct{}
+type prefixKey struct{}
+
 var (
-	DefaultPrefixes = []string{}
+	DefaultPrefixes []string
 )
 
 type env struct {
-	prefixes         []string
-	strippedPrefixes []string
-	opts             source.Options
+	prefixes             []string
+	strippedPrefixes     []string
+	opts                 source.Options
+	targetConfigInstance interface{}
 }
 
 func (e *env) Read() (*source.ChangeSet, error) {
@@ -44,16 +47,31 @@ func (e *env) Read() (*source.ChangeSet, error) {
 
 		pair := strings.SplitN(env, "=", 2)
 		value := pair[1]
-		keys := strings.Split(strings.ToLower(pair[0]), "_")
+		keys := strings.Split(pair[0], "_")
 		reverse(keys)
+
+		tmpValue := strings.TrimSpace(value)
 
 		tmp := make(map[string]interface{})
 		for i, k := range keys {
 			if i == 0 {
-				if intValue, err := strconv.Atoi(value); err == nil {
-					tmp[k] = intValue
-				} else if boolValue, err := strconv.ParseBool(value); err == nil {
-					tmp[k] = boolValue
+				if strings.HasPrefix(tmpValue, "{") && strings.HasSuffix(tmpValue, "}") {
+					rec := map[string]interface{}{}
+
+					if err := json.Unmarshal([]byte(tmpValue), &rec); err != nil {
+						panic(err)
+					} else {
+						tmp[k] = rec
+					}
+
+				} else if strings.HasPrefix(tmpValue, "[") && strings.HasSuffix(tmpValue, "]") {
+					var records []interface{}
+
+					if err := json.Unmarshal([]byte(tmpValue), &records); err != nil {
+						panic(err)
+					} else {
+						tmp[k] = records
+					}
 				} else {
 					tmp[k] = value
 				}
@@ -102,7 +120,7 @@ func reverse(ss []string) {
 }
 
 func (e *env) Watch() (source.Watcher, error) {
-	return newWatcher()
+	return source.NewNoopWatcher()
 }
 
 func (e *env) Write(cs *source.ChangeSet) error {
@@ -126,7 +144,7 @@ func (e *env) String() string {
 //              }
 //          }
 //      }
-func NewSource(opts ...source.Option) source.Source {
+func NewSource(targetConfigInstance interface{}, opts ...source.Option) source.Source {
 	options := source.NewOptions(opts...)
 
 	var sp []string
@@ -142,5 +160,5 @@ func NewSource(opts ...source.Option) source.Source {
 	if len(sp) > 0 || len(pre) > 0 {
 		pre = append(pre, DefaultPrefixes...)
 	}
-	return &env{prefixes: pre, strippedPrefixes: sp, opts: options}
+	return &env{prefixes: pre, strippedPrefixes: sp, opts: options, targetConfigInstance: targetConfigInstance}
 }

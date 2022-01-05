@@ -93,6 +93,9 @@ func TestConfigLoadWithInvalidFile(t *testing.T) {
 	}
 }
 
+type targetConfig struct {
+}
+
 func TestConfigMerge(t *testing.T) {
 	fh := createFileForIssue18(t, `{
   "amqp": {
@@ -114,11 +117,12 @@ func TestConfigMerge(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Expected no error but got %v", err)
 	}
+
 	if err := conf.Load(
 		file.NewSource(
 			file.WithPath(path),
 		),
-		env.NewSource(),
+		env.NewSource(&targetConfig{}),
 	); err != nil {
 		t.Fatalf("Expected no error but got %v", err)
 	}
@@ -145,7 +149,7 @@ func TestConfigWatcherDirtyOverrite(t *testing.T) {
 
 	l := 100
 
-	ss := make([]source.Source, l, l)
+	ss := make([]source.Source, l)
 
 	for i := 0; i < l; i++ {
 		ss[i] = memory.NewSource(memory.WithJSON([]byte(fmt.Sprintf(`{"key%d": "val%d"}`, i, i))))

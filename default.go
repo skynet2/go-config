@@ -119,7 +119,7 @@ func (c *config) run() {
 			case <-done:
 			case <-c.exit:
 			}
-			w.Stop()
+			_ = w.Stop()
 		}()
 
 		// block watch
@@ -206,8 +206,6 @@ func (c *config) Set(val interface{}, path ...string) {
 	if c.vals != nil {
 		c.vals.Set(val, path...)
 	}
-
-	return
 }
 
 func (c *config) Del(path ...string) {
@@ -217,8 +215,6 @@ func (c *config) Del(path ...string) {
 	if c.vals != nil {
 		c.vals.Del(path...)
 	}
-
-	return
 }
 
 func (c *config) Bytes() []byte {
